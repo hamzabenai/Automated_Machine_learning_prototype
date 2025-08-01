@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from collections import Counter
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import RandomOverSampler
 from imblearn.combine import SMOTETomek
 from imblearn.under_sampling import NearMiss, TomekLinks
 from sklearn.model_selection import train_test_split
@@ -128,7 +128,7 @@ class ImbalancedDataStrategy(DataStrategy):
         y = data[target]
         logging.warning(f"Class {class_value} is a majority class with {count/len(data)*100}% of the total records.")
         if data_size == "small":
-          sampler = SMOTE(sampling_strategy='minority', k_neighbors=3)
+          sampler = RandomOverSampler(sampling_strategy='minority', random_state = 42)
           X_res, y_res = sampler.fit_resample(X, y)
           data = pd.concat([X_res, y_res], axis=1)
         elif data_size == "medium":
