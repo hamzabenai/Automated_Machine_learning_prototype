@@ -1,8 +1,6 @@
-gradio
 pandas
 numpy
 scikit-learn
 xgboost
 imbalanced-learn
-openpyxl
 streamlit
