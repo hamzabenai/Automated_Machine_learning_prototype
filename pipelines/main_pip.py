@@ -3,18 +3,18 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from implementation.cleanData import fill_missing_values, remove_outliers, encode_data, scale_data, select_features, reduce_dimensions, split_data, remove_identifiers
+from implementation.cleanData import fill_missing_values, remove_outliers, encode_data, scale_data, select_features, reduce_dimensions, split_data, remove_identifiers, handle_imbalanced_data
 from implementation.trainModel import train_model
 from implementation.validateModel import model_validation
 from implementation.evaluateModel import model_evaluation
 from implementation.exportModel import exporting_model
 from strategies.IngestClass import IngestDataClass
-from typing import Union
+from typing import Union, Tuple
 import pandas as pd
 import logging
+from sklearn.base import ClassifierMixin, RegressorMixin
 
-
-def main_pipeline(data_path: str, target: str, model_name: str, model_path: str, model_type: bool) -> Union[str, dict]:
+def main_pipeline(data_path: str, target: str, model_name: str, model_path: str, model_type: bool) -> Union[str,dict] :
   try:
     logging.basicConfig(level=logging.INFO)
     logging.info("Starting main pipeline...")
@@ -29,11 +29,17 @@ def main_pipeline(data_path: str, target: str, model_name: str, model_path: str,
     # handling data issues / cleanData.py
     data = remove_identifiers(data, target)
     data = fill_missing_values(data, target)
-    data = remove_outliers(data, target)
-    data = encode_data(data, target)
-    data = scale_data(data, target)
-    data = select_features(data, target)
-    # data = reduce_dimensions(data, target)
+    data, detector = remove_outliers(data, target)
+    data = handle_imbalanced_data(data, target)
+    data, encoder = encode_data(data, target)
+    data, scaler = scale_data(data, target)
+    data, selected_feature = select_features(data, target)
+    # data, pca = reduce_dimensions(data, target)
+    proc_models = {
+      'detector': detector,
+      'encoder': encoder,
+      'scaler': scaler
+    }
     x_train, x_test, y_train, y_test = split_data(data, target)
     
     # handling model training / trainModel.py
@@ -49,7 +55,12 @@ def main_pipeline(data_path: str, target: str, model_name: str, model_path: str,
       # handling model exporting / exportModel.py
       exporting_model(model, model_path)
       logging.info("Main pipeline completed successfully.")
-      return evaluation_results
+      return {
+        'evaluation_results': evaluation_results,
+        'model': model,
+        'selected_feature': selected_feature,
+        'proc_models': proc_models
+      }
     else:
       return 'Model validation failed.'
     
