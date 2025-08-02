@@ -30,7 +30,7 @@ def main_pipeline(data_path: str, target: str, model_name: str, model_path: str,
     data = remove_identifiers(data, target)
     data = fill_missing_values(data, target)
     data, detector = remove_outliers(data, target)
-    data = handle_imbalanced_data(data, target)
+    data = handle_imbalanced_data(data, target, model_type)
     data, encoder = encode_data(data, target)
     data, scaler = scale_data(data, target)
     data, selected_feature = select_features(data, target)

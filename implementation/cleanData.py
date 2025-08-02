@@ -75,10 +75,9 @@ def split_data(data: pd.DataFrame, target: str = None, test_size: float = 0.2, r
   except Exception as e:
     raise RuntimeError(f"Error in splitting data: {e}")
 
-def handle_imbalanced_data(data: pd.DataFrame, target: str = None) -> pd.DataFrame:
+def handle_imbalanced_data(data: pd.DataFrame, target: str = None, model_type: bool = False) -> pd.DataFrame:
   try:
-    data = ImbalancedDataStrategy().handle_data(data, target)
-    logging.info("Imbalanced data handled successfully.")
+    data = ImbalancedDataStrategy().handle_data(data, target, model_type)
     return data
   except Exception as e:
     logging.error(f"Error handling imbalanced data: {e}")

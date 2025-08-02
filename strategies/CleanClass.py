@@ -106,44 +106,48 @@ class OutlierStrategy(DataStrategy):
       raise
     
 class ImbalancedDataStrategy(DataStrategy):
-  def handle_data(self, data: pd.DataFrame, target: str) -> pd.DataFrame:
+  def handle_data(self, data: pd.DataFrame, target: str, model_type: bool = False) -> pd.DataFrame:
     try:
-      data_size = None
-      if len(data) <= 2000:
-        data_size = "small"
-      elif 2000 < len(data) <= 20000:
-        data_size = "medium"
-      else: 
-        data_size = "large"
-      class_counts = Counter(data[target])
-      perform_test = False
-      for class_value, count in class_counts.items():
-        if count >= 0.75 * len(data):
-          perform_test = True
-          break
-      if perform_test:
-        X = data.drop(columns=[target])
-        y = data[target]
-        logging.warning(f"Class {class_value} is a majority class with {count/len(data)*100}% of the total records.")
-        if data_size == "small" or data_size == "medium":
-          class_counts = y.value_counts()
-          minority_class = class_counts.idxmin()
-          majority_class = class_counts.idxmax()
-          minority_data = X[y == minority_class]
-          majority_data = X[y == majority_class]
-          minority_upsampled = resample(minority_data, replace=True, n_samples=len(majority_data),  random_state=42)
-          data = pd.concat([minority_upsampled, majority_data])
-        else:
-          majority_class = y.value_counts().idxmax()
-          minority_class = y.value_counts().idxmin()
-          majority_data = X[y == majority_class]
-          minority_data = X[y == minority_class]
-          majority_downsampled = resample(majority_data,replace=False,n_samples=len(minority_data),random_state=42)
-          X_balanced = pd.concat([majority_downsampled, minority_data])
-          y_balanced = pd.Series([majority_class] * len(majority_downsampled) + [minority_class] * len(minority_data))
-          data = pd.concat([X_balanced, y_balanced], axis=1)
-        logging.info("Imbalanced data handled successfully.")
-      return data
+      if model_type:
+        data_size = None
+        if len(data) <= 2000:
+          data_size = "small"
+        elif 2000 < len(data) <= 20000:
+          data_size = "medium"
+        else: 
+          data_size = "large"
+        class_counts = Counter(data[target])
+        perform_test = False
+        for class_value, count in class_counts.items():
+          if count >= 0.75 * len(data):
+            perform_test = True
+            break
+        if perform_test:
+          X = data.drop(columns=[target])
+          y = data[target]
+          logging.warning(f"Class {class_value} is a majority class with {count/len(data)*100}% of the total records.")
+          if data_size == "small" or data_size == "medium":
+            class_counts = y.value_counts()
+            minority_class = class_counts.idxmin()
+            majority_class = class_counts.idxmax()
+            minority_data = X[y == minority_class]
+            majority_data = X[y == majority_class]
+            minority_upsampled = resample(minority_data, replace=True, n_samples=len(majority_data),  random_state=42)
+            data = pd.concat([minority_upsampled, majority_data])
+          else:
+            majority_class = y.value_counts().idxmax()
+            minority_class = y.value_counts().idxmin()
+            majority_data = X[y == majority_class]
+            minority_data = X[y == minority_class]
+            majority_downsampled = resample(majority_data,replace=False,n_samples=len(minority_data),random_state=42)
+            X_balanced = pd.concat([majority_downsampled, minority_data])
+            y_balanced = pd.Series([majority_class] * len(majority_downsampled) + [minority_class] * len(minority_data))
+            data = pd.concat([X_balanced, y_balanced], axis=1)
+          logging.info("Imbalanced data handled successfully.")
+        return data
+      else:
+        logging.info("Imbalanced data strategy skipped for regression model.")
+        return data
     except Exception as e:
       logging.error(f"Error handling imbalanced data: {e}")
       raise
