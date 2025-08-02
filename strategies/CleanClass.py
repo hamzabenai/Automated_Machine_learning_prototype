@@ -127,11 +127,7 @@ class ImbalancedDataStrategy(DataStrategy):
         X = data.drop(columns=[target])
         y = data[target]
         logging.warning(f"Class {class_value} is a majority class with {count/len(data)*100}% of the total records.")
-        if data_size == "small":
-          sampler = RandomOverSampler(sampling_strategy='minority', random_state = 42)
-          X_res, y_res = sampler.fit_resample(X, y)
-          data = pd.concat([X_res, y_res], axis=1)
-        elif data_size == "medium":
+        if data_size == "small" or data_size == "medium":
           sampler = SMOTETomek(sampling_strategy='auto', tomek=TomekLinks(sampling_strategy='majority'))
           X_res, y_res = sampler.fit_resample(X, y)
           data = pd.concat([X_res, y_res], axis=1)
