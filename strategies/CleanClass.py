@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from collections import Counter
-from smote_variants import SMOTE, TomekLinks
+import Augmentor
 from imblearn.under_sampling import NearMiss
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler, LabelEncoder
@@ -127,10 +127,15 @@ class ImbalancedDataStrategy(DataStrategy):
         y = data[target]
         logging.warning(f"Class {class_value} is a majority class with {count/len(data)*100}% of the total records.")
         if data_size == "small" or data_size == "medium":
-          X_res, y_res = SMOTE().sample(X, y)
-          tomek = TomekLinks()
-          X_res, y_res = tomek.sample(X_res, y_res)
-          data = pd.concat([pd.DataFrame(X_res), pd.Series(y_res)], axis=1)
+          class_counts = y.value_counts()
+          minority_class = class_counts.idxmin()
+          majority_class = class_counts.idxmax()
+          minority_data = data[data[target] == minority_class]
+          majority_data = data[data[target] == majority_class]
+          p = Augmentor.DataPipeline(minority_data)
+          p.sample(1000, method="SMOTE")  # Generates synthetic samples
+          augmented_minority = p.sample(1000)
+          data = pd.concat([augmented_minority, majority_data])
         else:
           sampler = NearMiss(version=3, n_jobs=-1)  
           X_res, y_res = sampler.fit_resample(X, y)
