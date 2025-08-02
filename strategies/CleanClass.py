@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from collections import Counter
-import Augmentor
 from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler, LabelEncoder
@@ -130,26 +129,18 @@ class ImbalancedDataStrategy(DataStrategy):
           class_counts = y.value_counts()
           minority_class = class_counts.idxmin()
           majority_class = class_counts.idxmax()
-          minority_data = data[data[target] == minority_class]
-          majority_data = data[data[target] == majority_class]
-          p = Augmentor.DataPipeline(minority_data)
-          p.sample(1000, method="SMOTE")  # Generates synthetic samples
-          augmented_minority = p.sample(1000)
-          data = pd.concat([augmented_minority, majority_data])
+          minority_data = X[y == minority_class]
+          majority_data = X[y == majority_class]
+          minority_upsampled = resample(minority_data, replace=True, n_samples=len(majority_data),  random_state=42)
+          data = pd.concat([minority_upsampled, majority_data])
         else:
           majority_class = y.value_counts().idxmax()
           minority_class = y.value_counts().idxmin()
           majority_data = X[y == majority_class]
           minority_data = X[y == minority_class]
-          majority_downsampled = resample(
-              majority_data,
-              replace=False,
-              n_samples=len(minority_data),
-              random_state=42
-          )
+          majority_downsampled = resample(majority_data,replace=False,n_samples=len(minority_data),random_state=42)
           X_balanced = pd.concat([majority_downsampled, minority_data])
-          y_balanced = pd.Series([majority_class] * len(majority_downsampled) + 
-                                [minority_class] * len(minority_data))
+          y_balanced = pd.Series([majority_class] * len(majority_downsampled) + [minority_class] * len(minority_data))
           data = pd.concat([X_balanced, y_balanced], axis=1)
         logging.info("Imbalanced data handled successfully.")
       return data
