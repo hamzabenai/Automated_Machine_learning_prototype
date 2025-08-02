@@ -2,5 +2,5 @@ pandas
 numpy
 xgboost
 scikit-learn
-imbalanced-learn
+smote_variants
 streamlit
