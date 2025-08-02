@@ -5,6 +5,8 @@ from pathlib import Path
 import sys
 import tempfile
 import numpy as np
+import sklearn
+import imblearn
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -14,6 +16,8 @@ from pipelines.main_pip import main_pipeline
 from strategies.PredictClass import PredictNow
 
 def main():
+    st.write(f"scikit-learn version: {sklearn.__version__}")
+    st.write(f"imbalanced-learn version: {imblearn.__version__}")
     st.set_page_config(page_title="Automated Supervised Learning", layout="wide")
     st.title("Automated Supervised Learning")
     
