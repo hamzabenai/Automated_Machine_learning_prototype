@@ -103,50 +103,27 @@ class OutlierStrategy(DataStrategy):
 class ImbalancedDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str, model_type: bool = False) -> pd.DataFrame:
     try:
-      if model_type:
-        data_size = None
-        if len(data) <= 2000:
-          data_size = "small"
-        elif 2000 < len(data) <= 20000:
-          data_size = "medium"
-        else: 
-          data_size = "large"
-        class_counts = Counter(data[target])
-        perform_test = False
-        for class_value, count in class_counts.items():
-          if count >= 0.75 * len(data):
-            perform_test = True
-            break
-        if perform_test:
-          X = data.drop(columns=[target])
-          y = data[target]
-          logging.warning(f"Class {class_value} is a majority class with {count/len(data)*100}% of the total records.")
-          if data_size == "small" or data_size == "medium":
-            class_counts = y.value_counts()
-            minority_class = class_counts.idxmin()
-            majority_class = class_counts.idxmax()
-            minority_data = X[y == minority_class]
-            majority_data = X[y == majority_class]
-            minority_upsampled = resample(minority_data, replace=True, n_samples=len(majority_data),  random_state=42)
-            data = pd.concat([minority_upsampled, majority_data])
-          else:
-            majority_class = y.value_counts().idxmax()
-            minority_class = y.value_counts().idxmin()
-            majority_data = X[y == majority_class]
-            minority_data = X[y == minority_class]
-            majority_downsampled = resample(majority_data,replace=False,n_samples=len(minority_data),random_state=42)
-            X_balanced = pd.concat([majority_downsampled, minority_data])
-            y_balanced = pd.Series([majority_class] * len(majority_downsampled) + [minority_class] * len(minority_data))
-            data = pd.concat([X_balanced, y_balanced], axis=1)
-          logging.info("Imbalanced data handled successfully.")
+      if not model_type:
         return data
-      else:
-        logging.info("Imbalanced data strategy skipped for regression model.")
-        return data
+      if target not in data.columns:
+        raise ValueError(f"Target column '{target}' not found")
+      class_counts = data[target].value_counts()
+      if len(class_counts) < 2:
+        return data 
+      majority_class = class_counts.idxmax()
+      minority_class = class_counts.idxmin()
+      if class_counts.max() / len(data) > 0.75:
+        minority = data[data[target] == minority_class].reset_index(drop=True)
+        majority = data[data[target] == majority_class].reset_index(drop=True)
+        minority_upsampled = resample( minority, replace=True, n_samples=len(majority), random_state=42 )
+        balanced_data = pd.concat([minority_upsampled, majority], axis=0)
+        balanced_data = balanced_data.sample(frac=1, random_state=42).reset_index(drop=True)
+        logging.info(f"Balanced classes: {balanced_data[target].value_counts().to_dict()}")
+        return balanced_data
+      return data
     except Exception as e:
-      logging.error(f"Error handling imbalanced data: {e}")
-      raise
-
+      logging.error(f"Imbalance handling failed. Current columns: {data.columns.tolist()}")
+      raise ValueError(f"Imbalanced data handling failed: {str(e)}") from e
 class SplitDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
     try:
@@ -159,11 +136,11 @@ class SplitDataStrategy(DataStrategy):
     except Exception as e:
       logging.error(f"Error splitting data: {e}")
       raise
-
 class ScaleDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str, prediction: bool = False, scaler: TransformerMixin = None) -> Tuple[pd.DataFrame, TransformerMixin]:
     try:
       if not prediction:
+        data = data.reset_index(drop=True)
         X = data.drop(columns=[target])
         y = data[target]
         scaler = RobustScaler()
@@ -186,13 +163,14 @@ class EncodeDataStrategy(DataStrategy):
       if not prediction:
         X = data.drop(columns=[target])
         y = data[target]
+        logging.info('target variable exists in the data')
         categorical_cols = X.select_dtypes(include=['object', 'category']).columns.tolist()
         for col in categorical_cols:
           encoder = LabelEncoder()
-          X[col] = encoder.fit_transform(X[col])
-        if pd.api.types.is_categorical_dtype(y) or not pd.api.types.is_numeric_dtype(y):
+          X[col] = encoder.fit_transform(X[col].astype(str))
+        if y.dtype in ['object', 'category']:
           target_encoder = LabelEncoder()
-          y_encoded = target_encoder.fit_transform(y)
+          y_encoded = target_encoder.fit_transform(y.astype(str))
           y_encoded = pd.Series(y_encoded, name=target, index=y.index)
         else:
           y_encoded = y
@@ -202,7 +180,7 @@ class EncodeDataStrategy(DataStrategy):
       else:
         categorical_cols = data.select_dtypes(include=['object', 'category']).columns.tolist()
         for col in categorical_cols:
-          data[col] = encoder.transform(data[col])
+          data[col] = encoder.transform(data[col].astype(str))
         return data, encoder
     except Exception as e:
         logging.error(f"Error encoding data: {e}")
