@@ -2,5 +2,5 @@ pandas
 numpy
 xgboost
 scikit-learn
-smote_variants
+smote_variants>=0.4.0
 streamlit
