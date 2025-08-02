@@ -56,9 +56,9 @@ class MissingValueStrategy(DataStrategy):
         raise
 
 class OutlierStrategy(DataStrategy): 
-  def handle_data(self, data: pd.DataFrame, target: str = None, Prediction: bool = False, detector: TransformerMixin = None) -> Tuple[pd.DataFrame, TransformerMixin]:
+  def handle_data(self, data: pd.DataFrame, target: str = None) -> pd.DataFrame:
     try:
-      if [data is not None and target in data.columns] or Prediction:
+      if [data is not None and target in data.columns]:
         original_rows = len(data)
         logging.info(f"Original number of rows: {original_rows}")
         if len(data) <= 2000:
@@ -77,28 +77,23 @@ class OutlierStrategy(DataStrategy):
           if data is None or data.empty:
             raise ValueError("Outlier Strategy Error : IQR method, No data left after outlier removal.")
         elif 2000 < len(data) <= 10000:
-          if not Prediction:
-            detector = LocalOutlierFactor(n_neighbors=20)
-            detector.fit(data.select_dtypes(include=[np.number]))
-          outliers = detector.predict(data.select_dtypes(include=[np.number]))
+          detector = LocalOutlierFactor(n_neighbors=20)
+          detector.fit(data.select_dtypes(include=[np.number]))
+          outliers = detector.fit_predict(data.select_dtypes(include=[np.number]))
           data = data[outliers == 1]
           if data is None or data.empty:
             raise ValueError("Outlier Strategy Error : Local Factor method, No data left after outlier removal.")
         else:
           numeric_data = data.select_dtypes(include=[np.number])
-          if not Prediction:
-            detector = IsolationForest(contamination='auto',
-                                    random_state=42,
-                                    n_estimators=100)
-            detector.fit(numeric_data)
-          outliers = detector.predict(numeric_data)
+          detector = IsolationForest(contamination='auto', random_state=42, n_estimators=100)
+          outliers = detector.fit_predict(numeric_data)
           data = data[outliers == 1]
           if data is None or data.empty:
             raise ValueError("Outlier Strategy Error : Isolation Forest method, No data left after outlier removal.")
         
         logging.info("Outliers handled successfully.")
         logging.info(f"Removed {original_rows - len(data)} rows ({((original_rows - len(data))/original_rows):.1%})")
-        return data, detector
+        return data
       else:
         raise ValueError("Outlier Strategy Error : Data is None or target column is missing.")
     except Exception as e:

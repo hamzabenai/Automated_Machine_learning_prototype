@@ -26,11 +26,10 @@ def fill_missing_values(data: pd.DataFrame, target: str = None) -> pd.DataFrame:
   except Exception as e:
     raise RuntimeError(f"Error in filling missing values: {e}")
   
-def remove_outliers(data: pd.DataFrame, target: str = None, Prediction: bool = False, detector: TransformerMixin = None) -> Tuple[pd.DataFrame, TransformerMixin]:
+def remove_outliers(data: pd.DataFrame, target: str = None) -> pd.DataFrame:
   try:
-    data, detecor = OutlierStrategy().handle_data(data, target, Prediction, detector)
-    
-    return data, detecor
+    data = OutlierStrategy().handle_data(data, target)
+    return data
   except Exception as e:
     raise RuntimeError(f"Error in removing outliers: {e}")
   

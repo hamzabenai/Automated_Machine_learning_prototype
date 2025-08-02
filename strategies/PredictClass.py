@@ -20,7 +20,6 @@ class PredictNow(PredictionStrategy):
     try:
       data = remove_identifiers(data)
       data = fill_missing_values(data)
-      data, _ = remove_outliers(data, Prediction=True, detector=proc_models.get('detector'))
       data, _ = encode_data(data, Prediction=True, encoder=proc_models.get('encoder'))
       data, _ = scale_data(data, Prediction=True, scaler=proc_models.get('scaler'))
       data = data[features]
