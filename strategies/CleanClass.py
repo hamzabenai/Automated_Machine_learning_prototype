@@ -7,7 +7,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from collections import Counter
 import Augmentor
-from imblearn.under_sampling import NearMiss
+from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.decomposition import PCA
@@ -137,8 +137,15 @@ class ImbalancedDataStrategy(DataStrategy):
           augmented_minority = p.sample(1000)
           data = pd.concat([augmented_minority, majority_data])
         else:
-          sampler = NearMiss(version=3, n_jobs=-1)  
-          X_res, y_res = sampler.fit_resample(X, y)
+          nn = NearestNeighbors(n_neighbors=3).fit(X)
+          distances, indices = nn.kneighbors(X)
+          tomek_pairs = []
+          for i, (idx1, idx2) in enumerate(indices):
+            if y.iloc[i] != y.iloc[idx1]:
+              tomek_pairs.append(i)
+          to_remove = [i for i in tomek_pairs if y.iloc[i] == y.value_counts().idxmax()]
+          X_res = X.drop(to_remove)
+          y_res = y.drop(to_remove)
           data = pd.concat([X_res, y_res], axis=1)
         logging.info("Imbalanced data handled successfully.")
       return data
@@ -159,23 +166,6 @@ class SplitDataStrategy(DataStrategy):
       logging.error(f"Error splitting data: {e}")
       raise
 
-# class ScaleDataStrategy(DataStrategy):
-#   def handle_data(self, data: pd.DataFrame, target: str, Prediction: bool = False) -> Tuple[pd.DataFrame, TransformerMixin]:
-#     try:
-#       if not Prediction:
-#         X = data.drop(columns=[target])
-#         y = data[target]
-#         scaler = RobustScaler()
-#         X_scaled = scaler.fit_transform(X)
-#         scaled_data = pd.DataFrame(X_scaled, columns=X.columns)
-#         scaled_data[target] = y.reset_index(drop=True)
-#         logging.info("Data scaled successfully.")
-#         return scaled_data, scaler
-#       else:
-#         scaled_data, scaler = handle_data(data, target, Prediction=True)
-#     except Exception as e:
-#       logging.error(f"Error scaling data: {e}")
-#       raise
 class ScaleDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str, prediction: bool = False, scaler: TransformerMixin = None) -> Tuple[pd.DataFrame, TransformerMixin]:
     try:
@@ -195,27 +185,6 @@ class ScaleDataStrategy(DataStrategy):
     except Exception as e:
       logging.error(f"Error scaling data: {e}")
       raise
-# class EncodeDataStrategy(DataStrategy):
-#   def handle_data(self, data: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, TransformerMixin]:
-#     try:
-#       X = data.drop(columns=[target])
-#       y = data[target]
-#       categorical_cols = X.select_dtypes(include=['object', 'category']).columns
-#       for col in categorical_cols:
-#         le = LabelEncoder()
-#         X[col] = le.fit_transform(X[col])
-#       if y.dtype == 'object' or y.dtype.name == 'category':
-#         le = LabelEncoder()
-#         y_encoded = le.fit_transform(y)
-#         y_encoded = pd.Series(y_encoded, name=target, index=y.index)
-#       else:
-#         y_encoded = y
-#       X[target] = y_encoded
-#       logging.info("Data encoded successfully.")
-#       return X, le
-#     except Exception as e:
-#       logging.error(f"Error encoding data: {e}")
-#       raise
   
 class EncodeDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str, prediction: bool = False, encoder: TransformerMixin = None) -> Tuple[pd.DataFrame, TransformerMixin]:
@@ -264,25 +233,6 @@ class FeatureSelectionStrategy(DataStrategy):
       logging.error(f"Feature selection failed, returning original data. Error: {e}")
       return data, data.columns
 
-# class FeatureEngineeringStrategy(DataStrategy):
-#   def handle_data(self, data: pd.DataFrame) -> pd.DataFrame:
-#     pass
-
-# class DimensionalityReductionStrategy(DataStrategy):
-#   def handle_data(self, data: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, TransformerMixin]:
-#     try:
-#       X = data.drop(columns=[target])
-#       y = data[target]
-#       pca = PCA(n_components=0.95, random_state=42)
-#       X_reduced = pca.fit_transform(X)
-#       reduced_data = pd.DataFrame(X_reduced, columns=[f'PC{i+1}' for i in range(X_reduced.shape[1])])
-#       reduced_data[target] = y.reset_index(drop=True)
-#       logging.info("Dimensionality reduction applied successfully.")
-#       return reduced_data, pca
-#     except Exception as e:
-#       logging.error(f"Error applying dimensionality reduction: {e}")
-#       raise
-    
 class DimensionalityReductionStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str, prediction: bool = False, pca: PCA = None) -> Tuple[pd.DataFrame, PCA]:
     try:
