@@ -7,7 +7,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from collections import Counter
 import Augmentor
-from sklearn.neighbors import NearestNeighbors
+from sklearn.utils import resample
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.decomposition import PCA
@@ -137,16 +137,20 @@ class ImbalancedDataStrategy(DataStrategy):
           augmented_minority = p.sample(1000)
           data = pd.concat([augmented_minority, majority_data])
         else:
-          nn = NearestNeighbors(n_neighbors=3).fit(X)
-          distances, indices = nn.kneighbors(X)
-          tomek_pairs = []
-          for i, (idx1, idx2) in enumerate(indices):
-            if y.iloc[i] != y.iloc[idx1]:
-              tomek_pairs.append(i)
-          to_remove = [i for i in tomek_pairs if y.iloc[i] == y.value_counts().idxmax()]
-          X_res = X.drop(to_remove)
-          y_res = y.drop(to_remove)
-          data = pd.concat([X_res, y_res], axis=1)
+          majority_class = y.value_counts().idxmax()
+          minority_class = y.value_counts().idxmin()
+          majority_data = X[y == majority_class]
+          minority_data = X[y == minority_class]
+          majority_downsampled = resample(
+              majority_data,
+              replace=False,
+              n_samples=len(minority_data),
+              random_state=42
+          )
+          X_balanced = pd.concat([majority_downsampled, minority_data])
+          y_balanced = pd.Series([majority_class] * len(majority_downsampled) + 
+                                [minority_class] * len(minority_data))
+          data = pd.concat([X_balanced, y_balanced], axis=1)
         logging.info("Imbalanced data handled successfully.")
       return data
     except Exception as e:
