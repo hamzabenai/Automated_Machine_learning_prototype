@@ -85,7 +85,11 @@ The system uses the Strategy Pattern extensively, with abstract base classes def
 This design allows for easy extension and modification of individual components without affecting the overall pipeline.
 
 ## Future Enhancements
+this was just the prototype version of the web application, therefor there are alot of key points that needs adjustement here is some of it:
 - Add hyperparameter tuning capabilities
+- use more dynamic methods in data preprocessing
+- use more dynamic scoring system
+- use more complex models that are able to identify more complex data patterns
 - Include more feature engineering options
 - Add support for time series data
 - Implement model interpretation tools (SHAP, LIME)
