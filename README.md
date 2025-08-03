@@ -32,8 +32,8 @@ This project provides an automated pipeline for supervised learning tasks (both 
 ## Usage
 
 1. Upload Data: Upload your training dataset (CSV or Excel format)
-2. Data Preprocessing:
-  - Remove unnecessary columns
+2. Data Preprocessing: it is a crutial step in maintaning the accuracy and reliability of the model performance, there we performed a list of operations in order to improve the data quality which involves :
+  - Remove unnecessary columns especialy the identifier features such as the IDs
   - Select target variable
   - Choose problem type (Classification/Regression)
 
@@ -49,10 +49,9 @@ This project provides an automated pipeline for supervised learning tasks (both 
   - Returns pandas DataFrame
 2. Data Cleaning `CleanClass.py`, `cleanData.py`
 - **Identifier Removal**: Drops columns with single unique value or all unique values
-
-- **Missing Value Handling:** For small datasets (<2000 rows): Imputes with mean/mode, For larger datasets: Drops columns with >20% missing values
-- **Outlier Treatment:** Small datasets: IQR method, Medium datasets: Local Outlier Factor, Large datasets: Isolation Forest
-- **Imbalanced Data Handling: (Classification)** Upsamples minority class when class imbalance > 75%
+- **Missing Value Handling:** which involves either filling those values using statistical approaches or dropping the entire feature in case the count was significant. this is was based on the size of the data and the percentage of the missing values
+- **Outlier Treatment:** using a diversed method based on the data size which includes, the use of IQR method in case of a small dataset, we used the LocalOutlierFactor in case of a medium data size and lastly IsolationForest in case we are dealing with a much larger dataset.
+- **Imbalanced Data Handling: (Classification)** since the imbalanced data is a crutial issue in the classification modeling, the need to handle such a problem was mendatory, therefor as a basic approach to handle such thing we relied on the resampling of the target variable, by adding a random records in case of undersampling or oversamling. we need to mention that we faced some issue when we used more advanced method such SMOTE and ADASYN that relies on the imbalanced_learn lib, due to compatibility issues with scikit-learn. where streamlit was not allowing to import the compatible versions.
 - **Encoding:** Label encoding for categorical features
 - **Scaling:** Robust scaling for numerical features
 - **Feature Selection:** Mutual information-based feature selection
@@ -70,6 +69,7 @@ This project provides an automated pipeline for supervised learning tasks (both 
 - Consistency between training and testing performance
 - Absolute performance thresholds
 - Cross-validation stability
+- Scoring System based on the evaluation metrics, where the model is valid if the score was greater than 9 points.
 
 6. Model Export `ExportClass.py`, `exportModel.py`
 - Saves trained model as pickle file
