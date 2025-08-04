@@ -18,6 +18,10 @@ class PredictionStrategy(ABC):
 class PredictNow(PredictionStrategy):
   def predict(self, data: pd.DataFrame, model: Union[ClassifierMixin, RegressorMixin], features: Union[list, pd.Index], proc_models: dict = None) -> pd.DataFrame:
     try:
+      for col in data.columns:
+        if data[col].nunique() == len(data):
+          identifier = data[col]
+          break
       data = remove_identifiers(data)
       data = fill_missing_values(data)
       data, _ = encode_data(data, Prediction=True, encoder=proc_models.get('encoder'))
@@ -27,7 +31,7 @@ class PredictNow(PredictionStrategy):
 
       predictions = model.predict(data)
       data['predictions'] = predictions
-      
+      data['Id'] = identifier if identifier is not None else data
       logging.info("Predictions made successfully.")
       return data
     except Exception as e:
