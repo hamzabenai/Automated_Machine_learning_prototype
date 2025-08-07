@@ -1,4 +1,5 @@
 import pandas as pd 
+from pandas.api.types import is_object_dtype, is_categorical_dtype, is_integer_dtype, is_float_dtype
 import numpy as np 
 import logging
 from typing import Tuple, Union, Dict, Optional
@@ -22,9 +23,13 @@ class RemoveIdentifierStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str, Prediction: bool = False) -> pd.DataFrame:
     try:
       if [data is not None and target in data.columns] or Prediction == True:
+        columns_to_drop = []
+        threshold = 0.98
         for column in data.columns:
-          if data[column].nunique() == 1 or data[column].nunique() == len(data):
-            data = data.drop(columns=[column])
+          if data[column].nunique() == 1 or data[column].nunique()/len(data) == threshold:
+            columns_to_drop.append(column)
+        data = data.drop(columns=[columns_to_drop])
+        logging.info(f"Removed {len(columns_to_drop)} identifier columns: {columns_to_drop}")
         return data
       else:
         raise ValueError("Remove Identifier Strategy Error : Data is None or target column is missing.")
@@ -39,7 +44,7 @@ class MissingValueStrategy(DataStrategy):
         for column in data.columns:
           count_nan = data[column].isnull().sum()
           if len(data) <= 2000:
-            if data[column].dtype in ['object', 'category']:
+            if is_object_dtype(data[column]) or is_categorical_dtype(data[column]) or is_integer_dtype(data[column]):
               data[column].fillna(data[column].mode()[0], inplace=True)
             else:
               data[column].fillna(data[column].mean(), inplace=True)
@@ -58,10 +63,18 @@ class MissingValueStrategy(DataStrategy):
 class OutlierStrategy(DataStrategy): 
   def handle_data(self, data: pd.DataFrame, target: str = None) -> pd.DataFrame:
     try:
+      data_sizes = ['small', 'medium', 'large']
+      if len(data) <= 2000:
+        data_size = data_sizes[0]
+      elif 2000 < len(data) <= 20000:
+        data_size = data_sizes[1]
+      else:
+        data_size = data_sizes[2]
+        
       if [data is not None and target in data.columns]:
         original_rows = len(data)
         logging.info(f"Original number of rows: {original_rows}")
-        if len(data) <= 2000:
+        if data_size == 'small':
           numeric_cols = data.select_dtypes(include=[np.number]).columns
           mask = pd.Series(True, index=data.index)
           
@@ -76,7 +89,7 @@ class OutlierStrategy(DataStrategy):
           data = data[mask]
           if data is None or data.empty:
             raise ValueError("Outlier Strategy Error : IQR method, No data left after outlier removal.")
-        elif 2000 < len(data) <= 10000:
+        elif data_size == 'medium':
           detector = LocalOutlierFactor(n_neighbors=20)
           detector.fit(data.select_dtypes(include=[np.number]))
           outliers = detector.fit_predict(data.select_dtypes(include=[np.number]))
@@ -85,12 +98,16 @@ class OutlierStrategy(DataStrategy):
             raise ValueError("Outlier Strategy Error : Local Factor method, No data left after outlier removal.")
         else:
           numeric_data = data.select_dtypes(include=[np.number])
-          detector = IsolationForest(contamination='auto', random_state=42, n_estimators=100)
+          detector = IsolationForest(contamination='auto', random_state=42, n_estimators=150)
           outliers = detector.fit_predict(numeric_data)
           data = data[outliers == 1]
           if data is None or data.empty:
             raise ValueError("Outlier Strategy Error : Isolation Forest method, No data left after outlier removal.")
-        
+        # handle outliers for categorical columns
+        for column in data.select_dtypes(include=['object', 'category']).columns:
+          value_counts = data[column].value_counts(normalize=True)
+          rare_categories = value_counts[value_counts < 0.01].index
+          data = data[~data[column].isin(rare_categories)]
         logging.info("Outliers handled successfully.")
         logging.info(f"Removed {original_rows - len(data)} rows ({((original_rows - len(data))/original_rows):.1%})")
         return data
@@ -110,15 +127,20 @@ class ImbalancedDataStrategy(DataStrategy):
       class_counts = data[target].value_counts()
       if len(class_counts) < 2:
         return data 
-      majority_class = class_counts.idxmax()
-      minority_class = class_counts.idxmin()
-      if class_counts.max() / len(data) > 0.75:
-        minority = data[data[target] == minority_class].reset_index(drop=True)
-        majority = data[data[target] == majority_class].reset_index(drop=True)
-        minority_upsampled = resample( minority, replace=True, n_samples=len(majority), random_state=42 )
-        balanced_data = pd.concat([minority_upsampled, majority], axis=0)
-        balanced_data = balanced_data.sample(frac=1, random_state=42).reset_index(drop=True)
-        logging.info(f"Balanced classes: {balanced_data[target].value_counts().to_dict()}")
+      unique_classes = class_counts.index.tolist()
+      perform_test = False
+      for class_label in unique_classes:
+        if len(data[data[target] == class_label]) >= 0.70* len(data):
+          perform_test = True
+          majority_class = class_label
+          break
+      if perform_test:
+        majority_df = data[data[target] == majority_class]
+        minority_df = data[data[target] != majority_class]
+        sample_size = int(len(minority_df) + 0.2 * len(majority_df))
+        sample_size = min(sample_size, len(majority_df)) 
+        majority_sampled = majority_df.sample(n=sample_size, random_state=42)
+        balanced_data = pd.concat([majority_sampled, minority_df]).sample(frac=1, random_state=42).reset_index(drop=True)
         return balanced_data
       return data
     except Exception as e:
@@ -127,10 +149,7 @@ class ImbalancedDataStrategy(DataStrategy):
 class SplitDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
     try:
-      x_train, x_test, y_train, y_test = train_test_split(data.drop(columns=[target]), 
-                                                        data[target], 
-                                                        test_size=0.2, 
-                                                        random_state=42,stratify=data[target])
+      x_train, x_test, y_train, y_test = train_test_split(data.drop(columns=[target]), data[target], test_size=0.2, random_state=42,stratify=data[target])
       logging.info("Data split into training and testing sets successfully.")
       return x_train, x_test, y_train, y_test
     except Exception as e:
