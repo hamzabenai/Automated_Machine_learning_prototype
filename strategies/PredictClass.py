@@ -21,7 +21,7 @@ class PredictNow(PredictionStrategy):
       identifier = None
       for col in data.columns:
         if data[col].nunique() == len(data):
-          identifier = data[col]
+          identifier = data[col].copy()
           break
       data = remove_identifiers(data, target=None, Prediction=True)
       data = fill_missing_values(data)
@@ -32,7 +32,7 @@ class PredictNow(PredictionStrategy):
 
       predictions = model.predict(data)
       data['predictions'] = predictions
-      data['Id'] = identifier if identifier is not None else data
+      data['Id'] = identifier.reset_index(drop=True) if identifier is not None else data
       logging.info("Predictions made successfully.")
       return data
     except Exception as e:
