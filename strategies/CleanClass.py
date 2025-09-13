@@ -149,7 +149,7 @@ class ImbalancedDataStrategy(DataStrategy):
 class SplitDataStrategy(DataStrategy):
   def handle_data(self, data: pd.DataFrame, target: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
     try:
-      x_train, x_test, y_train, y_test = train_test_split(data.drop(columns=[target]), data[target], test_size=0.2, random_state=42,stratify=data[target])
+      x_train, x_test, y_train, y_test = train_test_split(data.drop(columns=[target]), data[target], test_size=0.2, random_state=42)
       logging.info("Data split into training and testing sets successfully.")
       return x_train, x_test, y_train, y_test
     except Exception as e:
