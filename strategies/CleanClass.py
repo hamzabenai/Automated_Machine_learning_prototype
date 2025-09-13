@@ -28,7 +28,7 @@ class RemoveIdentifierStrategy(DataStrategy):
         for column in data.columns:
           if data[column].nunique() == 1 or data[column].nunique()/len(data) == threshold:
             columns_to_drop.append(column)
-        data = data.drop(columns=[columns_to_drop])
+        data = data.drop(columns=columns_to_drop)
         logging.info(f"Removed {len(columns_to_drop)} identifier columns: {columns_to_drop}")
         return data
       else:
