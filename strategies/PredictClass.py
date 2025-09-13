@@ -32,7 +32,7 @@ class PredictNow(PredictionStrategy):
 
       predictions = model.predict(data)
       data['predictions'] = predictions
-      data['Id'] = identifier.reset_index(drop=True) if identifier is not None else data
+      data['Id'] = identifier.reset_index(drop=True) if identifier is not None else range(len(data)) 
       logging.info("Predictions made successfully.")
       return data
     except Exception as e:
