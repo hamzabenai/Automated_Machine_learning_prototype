@@ -18,6 +18,7 @@ class PredictionStrategy(ABC):
 class PredictNow(PredictionStrategy):
   def predict(self, data: pd.DataFrame, model: Union[ClassifierMixin, RegressorMixin], features: Union[list, pd.Index], proc_models: dict = None) -> pd.DataFrame:
     try:
+      identifier = None
       for col in data.columns:
         if data[col].nunique() == len(data):
           identifier = data[col]
