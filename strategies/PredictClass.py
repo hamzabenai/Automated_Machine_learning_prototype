@@ -22,7 +22,7 @@ class PredictNow(PredictionStrategy):
         if data[col].nunique() == len(data):
           identifier = data[col]
           break
-      data = remove_identifiers(data)
+      data = remove_identifiers(data, target=None, Prediction=True)
       data = fill_missing_values(data)
       data, _ = encode_data(data, Prediction=True, encoder=proc_models.get('encoder'))
       data, _ = scale_data(data, Prediction=True, scaler=proc_models.get('scaler'))

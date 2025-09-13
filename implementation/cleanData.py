@@ -10,14 +10,15 @@ from typing import Tuple, Dict, Optional, Union
 from sklearn.base import TransformerMixin
 from sklearn.decomposition import PCA
 
-def remove_identifiers(data: pd.DataFrame, target: str = None) -> pd.DataFrame:
-  try:
-    data = RemoveIdentifierStrategy().handle_data(data, target)
-    logging.info("Identifiers removed successfully.")
-    return data
-  except Exception as e:
-    logging.error(f"Error removing identifiers: {e}")
-    raise RuntimeError(f"Error in removing identifiers: {e}") 
+def remove_identifiers(data: pd.DataFrame, target: str = None, Prediction: bool = False) -> pd.DataFrame:
+    try:
+        data = RemoveIdentifierStrategy().handle_data(data, target, Prediction)
+        logging.info("Identifiers removed successfully.")
+        return data
+    except Exception as e:
+        logging.error(f"Error removing identifiers: {e}")
+        raise RuntimeError(f"Error in removing identifiers: {e}")
+
   
 def fill_missing_values(data: pd.DataFrame, target: str = None) -> pd.DataFrame:
   try:
